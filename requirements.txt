@@ -1,0 +1,18 @@
+# ── Backend ──────────────────────────────────────────────────
+fastapi
+uvicorn[standard]
+python-multipart        # for UploadFile support in FastAPI
+python-dotenv           # load OPENAI_API_KEY from .env
+openai                  # GPT-4o-mini LLM judge
+
+# ── AI/ML — Classifier ───────────────────────────────────────
+torch                   # wav2vec2 inference
+transformers            # facebook/wav2vec2-base-960h
+soundfile               # read .flac files (ASVspoof dataset)
+librosa                 # audio resampling + DSP features
+scikit-learn            # LogisticRegression + StandardScaler
+
+# ── AI/ML — DSP ──────────────────────────────────────────────
+silero-vad              # Voice Activity Detection
+praat-parselmouth       # pitch/F0 extraction (Parselmouth wraps Praat)
+numpy

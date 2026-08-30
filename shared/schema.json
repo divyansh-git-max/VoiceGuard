@@ -1,0 +1,22 @@
+{
+  "_comment": "Shared JSON contract for all VoiceGuard components. Every component reads/writes exactly this shape.",
+  "chunk_id": "<string>",
+  "model1_output": {
+    "authenticity_score": "<float 0–1, probability audio is SYNTHETIC>"
+  },
+  "dsp_output": {
+    "pitch_variance": "<low | medium | high>",
+    "spectral_anomaly": "<low | medium | high>",
+    "phase_irregularity": "<low | medium | high>",
+    "timing_pattern": "<low | medium | high>"
+  },
+  "context": {
+    "transaction_type": "<string, e.g. wire_transfer>",
+    "caller_id_match": "<boolean>"
+  },
+  "llm_judge_output": {
+    "final_risk_score": "<int 0–100>",
+    "risk_level": "<low | medium | high>",
+    "explanation": "<plain-language verdict string>"
+  }
+}
