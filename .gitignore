@@ -11,3 +11,6 @@ dist/
 
 # Misc
 .DS_Store
+
+# classifier cache
+/cache
