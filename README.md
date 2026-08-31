@@ -57,23 +57,16 @@ VoiceGuard/
 ## Setup (Quick)
 
 ```bash
-# 1. Clone & create .env
-cp .env.example .env   # fill in OPENAI_API_KEY
+# 1. Install dependencies & environment (Automatic via uv)
+uv sync
 
-# 2. Python (backend + ai-ml)
-pip install fastapi uvicorn python-dotenv openai \
-            transformers torch soundfile librosa \
-            scikit-learn silero-vad praat-parselmouth
-
-# 3. Train classifier (run once after downloading ASVspoof 2019 LA)
-#    Set ASVSPOOF_ROOT env var to your dataset path, then:
-python -m ai_ml.classifier.train
-
-# 4. Start backend
-uvicorn backend.main:app --reload --port 8000
-
-# 5. Frontend
-cd frontend
-npm install
-npm run dev     # runs on localhost:5173
+# 2. Start Backend API
+uv run start-backend
+# or: uv run uvicorn backend.main:app --reload --port 8000
 ```
+
+> **Note**:
+> - **Interactive API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+> - **Health Check Endpoint**: [http://localhost:8000/health](http://localhost:8000/health)
+
+

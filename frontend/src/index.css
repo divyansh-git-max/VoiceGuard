@@ -1,5 +1,13 @@
 :root {
   /* VoiceGuard Core Palette */
+@import "tailwindcss";
+
+/* =========================================
+   VoiceGuard Design System
+   ========================================= */
+
+@theme {
+  /* Colors */
   --color-background: #030712;
 
   --color-panel: rgba(30, 41, 59, 0.45);
@@ -10,6 +18,9 @@
   --color-line: rgba(59, 130, 246, 0.3);
   --color-line-strong: rgba(59, 130, 246, 0.6);
   --color-line-purple: rgba(168, 85, 247, 0.3);
+
+  --color-line: rgba(59, 130, 246, 0.3);
+  --color-line-strong: rgba(59, 130, 246, 0.6);
 
   --color-text: #e5e7eb;
   --color-text-strong: #f9fafb;
