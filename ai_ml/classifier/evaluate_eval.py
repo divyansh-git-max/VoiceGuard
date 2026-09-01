@@ -13,8 +13,8 @@ Features:
   - Optional CSV report export.
 
 Usage:
-  uv run python ai-ml/classifier/evaluate_eval.py --samples 500
-  uv run python ai-ml/classifier/evaluate_eval.py --samples 1000 --save_csv results.csv
+  uv run python ai_ml/classifier/evaluate_eval.py --samples 500
+  uv run python ai_ml/classifier/evaluate_eval.py --samples 1000 --save_csv results.csv
 """
 
 import os
@@ -28,10 +28,13 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-# ─────────────────────────────────────────────────────────────
-# Windows Compatibility Guards
-# ─────────────────────────────────────────────────────────────
-sys.modules["torchaudio"] = None
+import types
+import importlib.machinery
+if "torchaudio" not in sys.modules or sys.modules["torchaudio"] is None:
+    ta = types.ModuleType("torchaudio")
+    ta.__version__ = "2.2.0"
+    ta.__spec__ = importlib.machinery.ModuleSpec(name="torchaudio", loader=None)
+    sys.modules["torchaudio"] = ta  # Prevents WinError 127 in torchaudio DLL while allowing import
 
 import transformers.modeling_utils
 import transformers.utils.import_utils
@@ -62,8 +65,11 @@ from sklearn.metrics import (
 )
 
 # Import our inference manager
-# pyrefly: ignore [missing-import]
-from predict import VoiceGuardModelManager
+try:
+    from ai_ml.classifier.predict import VoiceGuardModelManager
+except ImportError:
+    # pyrefly: ignore [missing-import]
+    from predict import VoiceGuardModelManager
 
 # ─────────────────────────────────────────────────────────────
 # Logging Configuration

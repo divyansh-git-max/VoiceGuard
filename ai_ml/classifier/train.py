@@ -26,10 +26,13 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-# ─────────────────────────────────────────────────────────────
-# Windows Compatibility Guards (Torchaudio DLL & Torch 2.5 Bin Safe Load)
-# ─────────────────────────────────────────────────────────────
-sys.modules["torchaudio"] = None  # Prevents WinError 127 in torchaudio DLL
+import types
+import importlib.machinery
+if "torchaudio" not in sys.modules or sys.modules["torchaudio"] is None:
+    ta = types.ModuleType("torchaudio")
+    ta.__version__ = "2.2.0"
+    ta.__spec__ = importlib.machinery.ModuleSpec(name="torchaudio", loader=None)
+    sys.modules["torchaudio"] = ta  # Prevents WinError 127 in torchaudio DLL while allowing import
 
 import transformers.modeling_utils
 import transformers.utils.import_utils

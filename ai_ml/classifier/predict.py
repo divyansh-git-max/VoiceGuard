@@ -24,10 +24,13 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-# ─────────────────────────────────────────────────────────────
-# Windows Compatibility Guards (Torchaudio DLL & Torch 2.5 Bin Safe Load)
-# ─────────────────────────────────────────────────────────────
-sys.modules["torchaudio"] = None  # Prevents WinError 127 in torchaudio DLL
+import types
+import importlib.machinery
+if "torchaudio" not in sys.modules or sys.modules["torchaudio"] is None:
+    ta = types.ModuleType("torchaudio")
+    ta.__version__ = "2.2.0"
+    ta.__spec__ = importlib.machinery.ModuleSpec(name="torchaudio", loader=None)
+    sys.modules["torchaudio"] = ta  # Prevents WinError 127 in torchaudio DLL while allowing import
 
 import transformers.modeling_utils
 import transformers.utils.import_utils
@@ -115,6 +118,7 @@ class VoiceGuardModelManager:
                 models_dir / p.name,
                 script_dir / p.name,
                 Path("./models") / p.name,
+                Path("./ai_ml/classifier/models") / p.name,
                 Path("./ai-ml/classifier/models") / p.name,
             ])
 
@@ -131,6 +135,8 @@ class VoiceGuardModelManager:
             script_dir / "model_ai4bharat.pkl",
             script_dir / "model_facebook.pkl",
             Path("./models/model.pkl"),
+            Path("./ai_ml/classifier/models/model.pkl"),
+            Path("./ai_ml/classifier/model.pkl"),
             Path("./ai-ml/classifier/models/model.pkl"),
             Path("./ai-ml/classifier/model.pkl"),
         ])
@@ -150,7 +156,7 @@ class VoiceGuardModelManager:
         if not self.model_path.exists():
             raise FileNotFoundError(
                 f"Trained model artifact not found at '{self.model_path}'. "
-                f"Please run 'python ai-ml/classifier/train.py' first to generate model.pkl."
+                f"Please run 'python ai_ml/classifier/train.py' first to generate model.pkl."
             )
 
         logger.info(f"Loading VoiceGuard classifier from {self.model_path}...")
