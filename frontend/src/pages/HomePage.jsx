@@ -121,6 +121,73 @@ export default function HomePage({ onAnalyzeComplete }) {
     }
   ];
 
+  // Generate a valid 16-bit PCM WAV File for test exhibits so they can be previewed & processed by backend
+  const createSynthesizedWav = (presetId, sampleName) => {
+    const sampleRate = 16000;
+    const duration = 3.0; // 3 seconds
+    const numSamples = Math.floor(sampleRate * duration);
+    const buffer = new ArrayBuffer(44 + numSamples * 2);
+    const view = new DataView(buffer);
+
+    const writeString = (offset, string) => {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    };
+
+    // RIFF header
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + numSamples * 2, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true); // Subchunk1Size
+    view.setUint16(20, 1, true);  // PCM format
+    view.setUint16(22, 1, true);  // Mono channel
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true); // ByteRate
+    view.setUint16(32, 2, true);  // BlockAlign
+    view.setUint16(34, 16, true); // BitsPerSample
+    writeString(36, 'data');
+    view.setUint32(40, numSamples * 2, true);
+
+    let offset = 44;
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / sampleRate;
+      let sample = 0;
+
+      if (presetId === 'scam_deepfake') {
+        // Robotic synthetic voice with fixed pitch & unnatural vocoder harmonics
+        sample = 0.35 * Math.sin(2 * Math.PI * 220 * t) +
+                 0.25 * Math.sin(2 * Math.PI * 440 * t) +
+                 0.18 * Math.sin(2 * Math.PI * 660 * t) +
+                 0.12 * Math.sin(2 * Math.PI * 880 * t);
+      } else if (presetId === 'authentic_human') {
+        // Natural human speech: dynamic pitch contour (130-180Hz) + natural cadence modulation
+        const f0 = 155 + 28 * Math.sin(2 * Math.PI * 1.4 * t) + 12 * Math.cos(2 * Math.PI * 3.1 * t);
+        const cadence = 0.5 + 0.5 * Math.sin(2 * Math.PI * 0.9 * t);
+        sample = cadence * (
+          0.4 * Math.sin(2 * Math.PI * f0 * t) +
+          0.2 * Math.sin(2 * Math.PI * 2 * f0 * t) +
+          0.1 * Math.sin(2 * Math.PI * 3 * f0 * t)
+        );
+      } else {
+        // Phase-manipulated audio: phase jumps and high frequency buzz
+        const phaseJitter = Math.sin(60 * t) > 0 ? 0.75 : -0.75;
+        const f0 = 175 + 15 * Math.sin(2 * Math.PI * 0.6 * t);
+        sample = 0.45 * Math.sin(2 * Math.PI * f0 * t + phaseJitter) +
+                 0.25 * Math.sin(2 * Math.PI * 2.5 * f0 * t);
+      }
+
+      const clamped = Math.max(-1, Math.min(1, sample));
+      const pcm16 = clamped < 0 ? clamped * 0x8000 : clamped * 0x7FFF;
+      view.setInt16(offset, pcm16, true);
+      offset += 2;
+    }
+
+    const blob = new Blob([buffer], { type: 'audio/wav' });
+    return new File([blob], sampleName, { type: 'audio/wav' });
+  };
+
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -158,10 +225,10 @@ export default function HomePage({ onAnalyzeComplete }) {
     setTransactionType(preset.type);
     setCallerIdMatch(preset.callerMatch);
     
-    const blob = new Blob(['VoiceGuard Synthetic Audio Test Waveform'], { type: 'audio/wav' });
-    const dummyFile = new File([blob], preset.sampleName, { type: 'audio/wav' });
-    setFile(dummyFile);
-    setAudioUrl(null);
+    const generatedFile = createSynthesizedWav(preset.id, preset.sampleName);
+    setFile(generatedFile);
+    const url = URL.createObjectURL(generatedFile);
+    setAudioUrl(url);
   };
 
   const startRecording = async () => {
@@ -169,7 +236,13 @@ export default function HomePage({ onAnalyzeComplete }) {
       setErrorMessage(null);
       activePresetRef.current = null;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      const options = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? { mimeType: 'audio/webm;codecs=opus' }
+        : MediaRecorder.isTypeSupported('audio/ogg')
+        ? { mimeType: 'audio/ogg' }
+        : {};
+      
+      mediaRecorderRef.current = new MediaRecorder(stream, options);
       audioChunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {
@@ -179,8 +252,10 @@ export default function HomePage({ onAnalyzeComplete }) {
       };
 
       mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        const recordedFile = new File([audioBlob], `mic_recording_${Date.now()}.wav`, { type: 'audio/wav' });
+        const mimeType = mediaRecorderRef.current.mimeType || 'audio/webm';
+        const extension = mimeType.includes('ogg') ? '.ogg' : mimeType.includes('wav') ? '.wav' : '.webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        const recordedFile = new File([audioBlob], `mic_recording_${Date.now()}${extension}`, { type: mimeType });
         setFile(recordedFile);
         const url = URL.createObjectURL(audioBlob);
         setAudioUrl(url);
@@ -217,68 +292,57 @@ export default function HomePage({ onAnalyzeComplete }) {
 
     setIsAnalyzing(true);
     setAnalysisStep(1);
+    setErrorMessage(null);
 
     const stepInterval = setInterval(() => {
       setAnalysisStep(prev => (prev < 4 ? prev + 1 : prev));
-    }, 550);
+    }, 600);
 
     try {
-      let resultData = null;
+      const formData = new FormData();
+      formData.append('audio', file);
+      formData.append('transaction_type', transactionType);
+      formData.append('caller_id_match', callerIdMatch);
 
-      if (activePresetRef.current) {
-        await new Promise(r => setTimeout(r, 2000));
-        resultData = activePresetRef.current.mockResult;
-      } else {
-        const formData = new FormData();
-        formData.append('audio_file', file);
-        formData.append('transaction_type', transactionType);
-        formData.append('caller_id_match', callerIdMatch);
-
-        try {
-          const res = await fetch('/analyze', {
-            method: 'POST',
-            body: formData,
-            headers: {
-              'Accept': 'application/json'
-            }
-          });
-
-          if (res.ok) {
-            resultData = await res.json();
-          } else {
-            throw new Error(`Server returned status ${res.status}`);
-          }
-        } catch (fetchErr) {
-          await new Promise(r => setTimeout(r, 2000));
-          const isSus = file.name.toLowerCase().includes('clone') || file.name.toLowerCase().includes('synth') || file.size < 50000;
-          const spoofProb = isSus ? 0.885 : 0.124;
-          const score = isSus ? 87 : 14;
-          
-          resultData = {
-            chunk_id: `vg-sample-${Date.now()}`,
-            model1_output: {
-              authenticity_score: spoofProb
-            },
-            dsp_output: {
-              pitch_variance: isSus ? 'high' : 'low',
-              spectral_anomaly: isSus ? 'high' : 'low',
-              phase_irregularity: isSus ? 'medium' : 'low',
-              timing_pattern: isSus ? 'medium' : 'low'
-            },
-            context: {
-              transaction_type: transactionType,
-              caller_id_match: callerIdMatch
-            },
-            llm_judge_output: {
-              final_risk_score: score,
-              risk_level: score > 70 ? 'high' : score > 35 ? 'medium' : 'low',
-              explanation: score > 70
-                ? `High risk detected: Acoustic analysis indicates a ${(spoofProb * 100).toFixed(1)}% likelihood of synthetic voice generation with unnatural harmonic cutoffs.`
-                : `Authentic voice verified: Natural pitch prosody and organic harmonic decay observed with only ${(spoofProb * 100).toFixed(1)}% spoof probability.`
-            }
-          };
+      // Include auth token if available
+      let token = null;
+      try {
+        const saved = localStorage.getItem('vg_user');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          token = parsed.token || parsed.access_token;
         }
+      } catch (e) {
+        // ignore JSON parse error
       }
+
+      const headers = {
+        'Accept': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch('/analyze', {
+        method: 'POST',
+        body: formData,
+        headers
+      });
+
+      if (!res.ok) {
+        let errorDetail = `Server returned status ${res.status}`;
+        try {
+          const errData = await res.json();
+          if (errData.detail) {
+            errorDetail = typeof errData.detail === 'string' ? errData.detail : JSON.stringify(errData.detail);
+          }
+        } catch (e) {
+          // ignore
+        }
+        throw new Error(errorDetail);
+      }
+
+      const resultData = await res.json();
 
       clearInterval(stepInterval);
       setAnalysisStep(4);
@@ -293,12 +357,12 @@ export default function HomePage({ onAnalyzeComplete }) {
           });
         }
         navigate('/result', { state: { result: resultData, audioUrl, fileName: file.name } });
-      }, 350);
+      }, 400);
 
     } catch (err) {
       clearInterval(stepInterval);
       setIsAnalyzing(false);
-      setErrorMessage(err.message || 'Analysis could not be completed.');
+      setErrorMessage(err.message || 'Analysis could not be completed. Please ensure backend server is running.');
     }
   };
 

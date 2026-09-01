@@ -1,7 +1,8 @@
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-import bcrypt
+import hashlib
+import secrets
 import jwt
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
@@ -21,14 +22,31 @@ security = HTTPBearer(auto_error=False)
 
 
 def hash_password(password: str) -> str:
-    """Hash a plaintext password with bcrypt."""
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    """Hash a plaintext password with bcrypt if available, or PBKDF2-HMAC-SHA256."""
+    try:
+        import bcrypt
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    except ImportError:
+        salt = secrets.token_hex(16)
+        key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000)
+        return f"pbkdf2:sha256:{salt}:{key.hex()}"
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plaintext password against a bcrypt hash."""
+    """Verify a plaintext password against a bcrypt or PBKDF2 hash."""
+    if hashed_password.startswith("pbkdf2:sha256:"):
+        try:
+            parts = hashed_password.split(":")
+            if len(parts) == 4:
+                salt, key_hex = parts[2], parts[3]
+                key = hashlib.pbkdf2_hmac("sha256", plain_password.encode("utf-8"), salt.encode("utf-8"), 100000)
+                return secrets.compare_digest(key.hex(), key_hex)
+        except Exception:
+            return False
+
     try:
+        import bcrypt
         return bcrypt.checkpw(
             plain_password.encode("utf-8"),
             hashed_password.encode("utf-8"),

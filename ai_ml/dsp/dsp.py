@@ -282,6 +282,8 @@ def extract_dsp_features(
         y,
         speech_segments
     )
+    if len(speech_audio) == 0:
+        speech_audio = y
 
     return {
         "pitch_variance": _analyze_pitch(

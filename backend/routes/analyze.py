@@ -2,17 +2,15 @@ import asyncio
 import json
 import os
 import tempfile
+import uuid
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, Form 
+from typing import Optional
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
 from ai_ml.classifier.predict import predict
 from ai_ml.dsp.dsp import extract_dsp_features
-from backend.llm_judge.judge import judge # not implemented as of now
+from backend.llm_judge.judge import judge
 
 router = APIRouter(tags=["Analysis"])
-
-# Audio files for testing
-# AUDIO_PATH = r"E:\archive\LA\LA\ASVspoof2019_LA_eval\flac\LA_E_1001964.flac"
-# AUDIO_PATH = r"E:\Mozilla Common Speech Hindi\cv-corpus-26.0-2026-06-12\hi\clips\common_voice_hi_23795252.mp3"
 
 
 async def analyze(temp_file_path: str, context: dict = None) -> dict:
@@ -22,13 +20,13 @@ async def analyze(temp_file_path: str, context: dict = None) -> dict:
             "caller_id_match": True,
         }
 
-    # Task 2: Parallelize CPU-heavy ML and DSP models simultaneously using threads
+    # Parallelize CPU-heavy ML and DSP models simultaneously using threads
     auth_score, dsp_flags = await asyncio.gather(
         asyncio.to_thread(predict, temp_file_path),
         asyncio.to_thread(extract_dsp_features, temp_file_path),
     )
 
-    # Task 3: Evidence Packaging & LLM Judge
+    # Evidence Packaging & LLM Judge
     evidence = {
         "authenticity_score": auth_score,
         "dsp_output": dsp_flags,
@@ -38,52 +36,65 @@ async def analyze(temp_file_path: str, context: dict = None) -> dict:
     try:
         verdict = await asyncio.to_thread(judge, evidence)
     except Exception as e:
-        verdict = {"status": "placeholder", "error": str(e)}
+        verdict = {
+            "final_risk_score": int(auth_score * 100),
+            "risk_level": "high" if auth_score >= 0.7 else "medium" if auth_score >= 0.4 else "low",
+            "explanation": f"Evaluation error in LLM judge: {str(e)}",
+        }
 
-    # Output shape matching shared/schema_prototype.json
+    chunk_id = f"vg-chunk-{uuid.uuid4().hex[:8]}"
+
+    # Output shape matching shared/schema.json contract
     output = {
+        "chunk_id": chunk_id,
         "model1_output": {
-            "authenticity_score": auth_score,
+            "authenticity_score": round(float(auth_score), 4),
         },
         "dsp_output": dsp_flags,
+        "context": context,
+        "llm_judge_output": verdict,
     }
 
     return output
 
 
-async def main():
-    result = await analyze(AUDIO_PATH)
-    print("Final Analysis Output (schema_prototype.json format):")
-    print(json.dumps(result, indent=4))
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
 @router.post("/analyze")
 async def analyze_audio(
-    audio: UploadFile = File(...),
+    audio: Optional[UploadFile] = File(None),
+    audio_file: Optional[UploadFile] = File(None),
     transaction_type: str = Form("unknown"),
     caller_id_match: bool = Form(True),
 ):
+    upload = audio or audio_file
+    if upload is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No audio file uploaded. Please provide an 'audio' or 'audio_file' form field."
+        )
+
     temp_file_path = None
 
     try:
-        suffix = Path(audio.filename).suffix or ".wav"
+        filename = upload.filename or "sample.wav"
+        suffix = Path(filename).suffix or ".wav"
+
+        contents = await upload.read()
+        if not contents or len(contents) < 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded audio file is empty or corrupted."
+            )
 
         with tempfile.NamedTemporaryFile(
             suffix=suffix,
             delete=False,
         ) as temp_file:
-
             temp_file_path = temp_file.name
-
-            contents = await audio.read()
             temp_file.write(contents)
 
         context = {
             "transaction_type": transaction_type,
-            "caller_id_match": caller_id_match,
+            "caller_id_match": bool(caller_id_match),
         }
 
         result = await analyze(
@@ -93,7 +104,17 @@ async def analyze_audio(
 
         return result
 
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Forensic analysis failed: {str(e)}"
+        )
     finally:
         if temp_file_path and os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
+            try:
+                os.remove(temp_file_path)
+            except OSError:
+                pass
             
