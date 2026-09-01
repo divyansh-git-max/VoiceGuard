@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, LogOut } from 'lucide-react';
 
-export default function Navbar() {
+export default function Navbar({ user, onLogout }) {
   return (
     <header style={{
       borderBottom: '1px solid var(--color-line)',
@@ -54,8 +54,8 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Status Indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        {/* Status Indicator & User controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -77,9 +77,57 @@ export default function Navbar() {
             <span>Detection active</span>
           </div>
 
-          <span style={{ fontSize: '0.75rem', color: 'var(--color-subtle)', display: 'none', sm: 'inline' }}>
-            Problem SIH26104
-          </span>
+          {user && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              paddingLeft: '0.6rem',
+              borderLeft: '1px solid var(--color-line)'
+            }}>
+              <span style={{
+                fontSize: '0.8rem',
+                color: 'var(--color-muted)',
+                maxWidth: '160px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {user.name || user.email || 'User'}
+              </span>
+
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  title="Log out"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#f87171',
+                    padding: '0.35rem 0.7rem',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: '0.78rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                  }}
+                >
+                  <LogOut size={13} />
+                  <span>Logout</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </header>

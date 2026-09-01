@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 function SignupPage({ onSignup, onGoToLogin }) {
@@ -22,9 +22,9 @@ function SignupPage({ onSignup, onGoToLogin }) {
     setError("");
 
     if (
-      !name ||
-      !email ||
-      !organization ||
+      !name.trim() ||
+      !email.trim() ||
+      !organization.trim() ||
       !role ||
       !password ||
       !confirmPassword
@@ -33,8 +33,8 @@ function SignupPage({ onSignup, onGoToLogin }) {
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must contain at least 8 characters.");
+    if (password.length < 6) {
+      setError("Password must contain at least 6 characters.");
       return;
     }
 
@@ -43,21 +43,58 @@ function SignupPage({ onSignup, onGoToLogin }) {
       return;
     }
 
+    // Generate sanitized username (3-50 chars) from full name or email prefix
+    let cleanUsername = name.trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+    if (cleanUsername.length < 3) {
+      cleanUsername = `${cleanUsername}_${email.split("@")[0]}`.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 30);
+    }
+    if (cleanUsername.length < 3) {
+      cleanUsername = `user_${Math.floor(Math.random() * 8999 + 1000)}`;
+    }
+
     setLoading(true);
 
-    // Temporary frontend signup flow.
-    // Later this will be replaced with your backend signup API.
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    setLoading(false);
-
-    if (onSignup) {
-      onSignup({
-        name,
-        email,
-        organization,
-        role,
+    try {
+      const response = await fetch("/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          username: cleanUsername,
+          password: password,
+        }),
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        let detailMsg = data.detail;
+        if (Array.isArray(detailMsg)) {
+          detailMsg = detailMsg.map((item) => item.msg || item.loc?.join(".") || "Validation error").join("; ");
+        }
+        throw new Error(
+          detailMsg || "Registration failed. Please check your information and try again."
+        );
+      }
+
+      if (onSignup) {
+        onSignup({
+          name: name.trim(),
+          email: email.trim(),
+          username: data.username || cleanUsername,
+          organization,
+          role,
+        });
+      }
+    } catch (err) {
+      setError(
+        err.message ||
+          "Unable to connect to registration server. Please ensure the backend is running."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -184,6 +221,7 @@ function SignupPage({ onSignup, onGoToLogin }) {
                   <input
                     id="signup-name"
                     type="text"
+                    disabled={loading}
                     value={name}
                     onChange={(event) => {
                       setName(event.target.value);
@@ -191,7 +229,7 @@ function SignupPage({ onSignup, onGoToLogin }) {
                     }}
                     placeholder="Your name"
                     autoComplete="name"
-                    className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-4 py-3.5 text-sm text-white outline-none backdrop-blur-xl transition-all placeholder:text-slate-600 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10"
+                    className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-4 py-3.5 text-sm text-white outline-none backdrop-blur-xl transition-all placeholder:text-slate-600 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -206,6 +244,7 @@ function SignupPage({ onSignup, onGoToLogin }) {
                   <input
                     id="signup-organization"
                     type="text"
+                    disabled={loading}
                     value={organization}
                     onChange={(event) => {
                       setOrganization(event.target.value);
@@ -213,7 +252,7 @@ function SignupPage({ onSignup, onGoToLogin }) {
                     }}
                     placeholder="Company / institution"
                     autoComplete="organization"
-                    className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-4 py-3.5 text-sm text-white outline-none backdrop-blur-xl transition-all placeholder:text-slate-600 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10"
+                    className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-4 py-3.5 text-sm text-white outline-none backdrop-blur-xl transition-all placeholder:text-slate-600 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -232,6 +271,7 @@ function SignupPage({ onSignup, onGoToLogin }) {
                 <input
                   id="signup-email"
                   type="email"
+                  disabled={loading}
                   value={email}
                   onChange={(event) => {
                     setEmail(event.target.value);
@@ -239,7 +279,7 @@ function SignupPage({ onSignup, onGoToLogin }) {
                   }}
                   placeholder="you@company.com"
                   autoComplete="email"
-                  className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-4 py-3.5 text-sm text-white outline-none backdrop-blur-xl transition-all placeholder:text-slate-600 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10"
+                  className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-4 py-3.5 text-sm text-white outline-none backdrop-blur-xl transition-all placeholder:text-slate-600 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -255,12 +295,13 @@ function SignupPage({ onSignup, onGoToLogin }) {
 
                 <select
                   id="signup-role"
+                  disabled={loading}
                   value={role}
                   onChange={(event) => {
                     setRole(event.target.value);
                     setError("");
                   }}
-                  className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-4 py-3.5 text-sm text-white outline-none backdrop-blur-xl transition-all focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10"
+                  className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-4 py-3.5 text-sm text-white outline-none backdrop-blur-xl transition-all focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <option value="" disabled>
                     Select your role
@@ -311,20 +352,22 @@ function SignupPage({ onSignup, onGoToLogin }) {
                     <input
                       id="signup-password"
                       type={showPassword ? "text" : "password"}
+                      disabled={loading}
                       value={password}
                       onChange={(event) => {
                         setPassword(event.target.value);
                         setError("");
                       }}
-                      placeholder="Create password"
+                      placeholder="Create password (6+ chars)"
                       autoComplete="new-password"
-                      className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-4 py-3.5 pr-12 text-sm text-white outline-none backdrop-blur-xl transition-all placeholder:text-slate-600 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10"
+                      className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-4 py-3.5 pr-12 text-sm text-white outline-none backdrop-blur-xl transition-all placeholder:text-slate-600 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
                     />
 
                     <button
                       type="button"
+                      disabled={loading}
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-slate-300"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-slate-300 disabled:opacity-50"
                       aria-label={
                         showPassword
                           ? "Hide password"
@@ -360,6 +403,7 @@ function SignupPage({ onSignup, onGoToLogin }) {
                           ? "text"
                           : "password"
                       }
+                      disabled={loading}
                       value={confirmPassword}
                       onChange={(event) => {
                         setConfirmPassword(event.target.value);
@@ -367,17 +411,18 @@ function SignupPage({ onSignup, onGoToLogin }) {
                       }}
                       placeholder="Confirm password"
                       autoComplete="new-password"
-                      className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-4 py-3.5 pr-12 text-sm text-white outline-none backdrop-blur-xl transition-all placeholder:text-slate-600 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10"
+                      className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-4 py-3.5 pr-12 text-sm text-white outline-none backdrop-blur-xl transition-all placeholder:text-slate-600 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
                     />
 
                     <button
                       type="button"
+                      disabled={loading}
                       onClick={() =>
                         setShowConfirmPassword(
                           !showConfirmPassword
                         )
                       }
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-slate-300"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-slate-300 disabled:opacity-50"
                       aria-label={
                         showConfirmPassword
                           ? "Hide password"
@@ -407,8 +452,8 @@ function SignupPage({ onSignup, onGoToLogin }) {
 
                   {loading ? (
                     <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Creating account...
+                      <Loader2 className="h-5 w-5 animate-spin text-white" />
+                      <span>Creating account...</span>
                     </>
                   ) : (
                     "Create account"
@@ -428,8 +473,9 @@ function SignupPage({ onSignup, onGoToLogin }) {
 
               <button
                 type="button"
+                disabled={loading}
                 onClick={onGoToLogin}
-                className="font-medium text-blue-400 transition-colors hover:text-blue-300"
+                className="font-medium text-blue-400 transition-colors hover:text-blue-300 disabled:opacity-50"
               >
                 Login
               </button>
