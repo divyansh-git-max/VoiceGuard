@@ -1,5 +1,5 @@
 # ============================================================
-# ai-ml/classifier/train_colab.py
+# ai_ml/classifier/train_colab.py
 # Role: Google Colab-optimised training script.
 # Run this ONCE in a free Colab T4 session (GPU runtime).
 #
@@ -220,7 +220,7 @@ except ImportError:
     print("Not running in Colab — model.pkl is saved locally.")
 
 # After downloading:
-# 1. Copy model.pkl into ai-ml/classifier/
-# 2. git add ai-ml/classifier/model.pkl
+# 1. Copy model.pkl into ai_ml/classifier/
+# 2. git add ai_ml/classifier/model.pkl
 # 3. git commit -m "Add pretrained model.pkl"
 # 4. git push — team can now use it from Day 1

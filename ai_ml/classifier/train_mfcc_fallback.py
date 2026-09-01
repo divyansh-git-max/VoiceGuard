@@ -1,5 +1,5 @@
 # ============================================================
-# ai-ml/classifier/train_mfcc_fallback.py
+# ai_ml/classifier/train_mfcc_fallback.py
 # Role: BACKUP training script — zero GPU needed, trains in ~2 min.
 #
 # Use this ONLY if you cannot run train_colab.py in time.
@@ -103,4 +103,4 @@ if __name__ == "__main__":
 
     with open(OUTPUT_MODEL, "wb") as f:
         pickle.dump(clf, f)
-    print(f"✅ model.pkl saved — copy to ai-ml/classifier/")
+    print(f"✅ model.pkl saved — copy to ai_ml/classifier/")

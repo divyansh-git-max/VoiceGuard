@@ -10,7 +10,7 @@ VoiceGuard/
 ├── shared/
 │   └── schema.json              ← JSON contract all components must follow
 │
-├── ai-ml/
+├── ai_ml/
 │   ├── classifier/
 │   │   ├── models/
 │   │   │   └── model.pkl        ← Pre-trained classifier artifact (wav2vec2 + LogReg/SVM)
@@ -109,7 +109,7 @@ npm run dev
 
 ---
 
-## 🧠 Synthetic Voice Classifier (`ai-ml/classifier/`)
+## 🧠 Synthetic Voice Classifier (`ai_ml/classifier/`)
 
 ### Overview
 The AI classifier is VoiceGuard's core neural detection engine. Given an audio recording (`.wav`, `.mp3`, `.flac`, `.m4a`), it predicts whether the voice is **SYNTHETIC** (AI voice clone, TTS, or voice conversion attack) or **BONAFIDE** (authentic human speaker) by returning a probability score between `0.0` and `1.0`.
@@ -131,7 +131,7 @@ The AI classifier is VoiceGuard's core neural detection engine. Given an audio r
 Test any audio file directly from the project root:
 
 ```bash
-uv run python ai-ml/classifier/predict.py "path/to/your_audio.wav"
+uv run python ai_ml/classifier/predict.py "path/to/your_audio.wav"
 ```
 
 **Example Output:**
@@ -184,5 +184,5 @@ To batch-test random unseen clips from the official ASVspoof 2019 Eval dataset a
 
 ```bash
 # may take some time on first run
-uv run python ai-ml/classifier/evaluate_eval.py --samples 500
+uv run python ai_ml/classifier/evaluate_eval.py --samples 500
 ```
