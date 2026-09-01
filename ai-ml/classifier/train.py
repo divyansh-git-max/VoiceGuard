@@ -175,7 +175,7 @@ class Wav2VecFeatureExtractor:
 
     def __init__(
         self,
-        model_name: str = "facebook/wav2vec2-base-960h",
+        model_name: str = "ai4bharat/indicwav2vec-hindi",
         target_sr: int = 16000,
         max_duration: float = 5.0,
         pooling: str = "stat",
@@ -484,7 +484,7 @@ def main():
     parser = argparse.ArgumentParser(description="VoiceGuard Synthetic Voice Detection Training Pipeline")
     parser.add_argument("--asvspoof_dir", type=str, default=None, help="Root path to ASVspoof 2019 LA dataset")
     parser.add_argument("--cv_hindi_dir", type=str, default=None, help="Path to Mozilla Common Voice Hindi clips folder")
-    parser.add_argument("--backbone", type=str, default="facebook/wav2vec2-base-960h", help="HuggingFace model backbone ID")
+    parser.add_argument("--backbone", type=str, default="ai4bharat/indicwav2vec-hindi", help="HuggingFace model backbone ID")
     parser.add_argument("--classifier", type=str, default="lr", choices=["lr", "svm", "xgb", "ensemble"], help="Downstream classifier")
     parser.add_argument("--pooling", type=str, default="stat", choices=["stat", "mean"], help="Pooling method (stat: Mean+Std -> 1536-dim, mean: 768-dim)")
     parser.add_argument("--batch_size", type=int, default=16, help="GPU feature extraction batch size")

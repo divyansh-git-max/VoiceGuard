@@ -86,7 +86,7 @@ class VoiceGuardModelManager:
 
         self.classifier_bundle: Optional[Dict[str, Any]] = None
         self.pipeline = None
-        self.backbone_name = "facebook/wav2vec2-base-960h"
+        self.backbone_name = "ai4bharat/indicwav2vec-hindi"
         self.pooling = "stat"
         self.target_sr = 16000
         self.max_duration = 5.0

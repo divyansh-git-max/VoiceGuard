@@ -1,8 +1,12 @@
 import { useState } from "react";
-import { Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { Eye, EyeOff, ShieldCheck, Loader2, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 function LoginPage({ onLogin, onGoToSignup }) {
+  const location = useLocation();
+  const successMessage = location.state?.message;
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -15,34 +19,55 @@ function LoginPage({ onLogin, onGoToSignup }) {
 
     setError("");
 
-    // Basic validation
-    if (!email || !password) {
-      setError("Email and password are required.");
+    const trimmedIdentifier = email.trim();
+    if (!trimmedIdentifier || !password) {
+      setError("Email or username and password are required.");
       return;
     }
 
-    // Password must be at least 6 characters
     if (password.length < 6) {
-    setError("Password must be at least 6 characters.");
-    return;
+      setError("Password must be at least 6 characters.");
+      return;
     }
 
     setLoading(true);
 
-    /*
-      Temporary frontend login.
-
-      Later, this will be replaced with a real
-      backend authentication API call.
-    */
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    setLoading(false);
-
-    if (onLogin) {
-      onLogin({
-        email,
+    try {
+      const response = await fetch("/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username_or_email: trimmedIdentifier,
+          password: password,
+        }),
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail || "Authentication failed. Please check your credentials."
+        );
+      }
+
+      if (onLogin) {
+        onLogin({
+          email: trimmedIdentifier,
+          username: data.username,
+          role: data.role,
+          token: data.access_token,
+          userId: data.user_id,
+        });
+      }
+    } catch (err) {
+      setError(
+        err.message ||
+          "Unable to connect to authentication server. Please ensure the backend is running."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -149,6 +174,18 @@ function LoginPage({ onLogin, onGoToSignup }) {
 
             </div>
 
+            {/* Registration success feedback */}
+            {successMessage && !error && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300"
+              >
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                <span>{successMessage}</span>
+              </motion.div>
+            )}
+
             {/* Error message */}
             {error && (
               <motion.div
@@ -172,20 +209,21 @@ function LoginPage({ onLogin, onGoToSignup }) {
                   htmlFor="login-email"
                   className="mb-2 block text-sm font-medium text-slate-300"
                 >
-                  Work email
+                  Work email or username
                 </label>
 
                 <input
                   id="login-email"
-                  type="email"
+                  type="text"
+                  disabled={loading}
                   value={email}
                   onChange={(event) => {
                     setEmail(event.target.value);
                     setError("");
                   }}
-                  placeholder="you@company.com"
-                  autoComplete="email"
-                  className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-5 py-4 text-sm text-white outline-none backdrop-blur-xl transition-all placeholder:text-slate-600 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10"
+                  placeholder="you@company.com or username"
+                  autoComplete="username"
+                  className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-5 py-4 text-sm text-white outline-none backdrop-blur-xl transition-all placeholder:text-slate-600 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
                 />
 
               </div>
@@ -205,10 +243,11 @@ function LoginPage({ onLogin, onGoToSignup }) {
 
                   <button
                     type="button"
-                    className="text-xs text-blue-400 transition-colors hover:text-blue-300"
+                    disabled={loading}
+                    className="text-xs text-blue-400 transition-colors hover:text-blue-300 disabled:opacity-50"
                     onClick={() => {
                       setError(
-                        "Password recovery will be connected later."
+                        "Password recovery will be connected to your company identity provider."
                       );
                     }}
                   >
@@ -222,6 +261,7 @@ function LoginPage({ onLogin, onGoToSignup }) {
                   <input
                     id="login-password"
                     type={showPassword ? "text" : "password"}
+                    disabled={loading}
                     value={password}
                     onChange={(event) => {
                       setPassword(event.target.value);
@@ -229,15 +269,16 @@ function LoginPage({ onLogin, onGoToSignup }) {
                     }}
                     placeholder="••••••••"
                     autoComplete="current-password"
-                    className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-5 py-4 pr-14 text-sm text-white outline-none backdrop-blur-xl transition-all placeholder:text-slate-600 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10"
+                    className="w-full rounded-2xl border border-purple-500/30 bg-slate-950/60 px-5 py-4 pr-14 text-sm text-white outline-none backdrop-blur-xl transition-all placeholder:text-slate-600 focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
                   />
 
                   {/* Show / hide password */}
 
                   <button
                     type="button"
+                    disabled={loading}
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-slate-300"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-slate-300 disabled:opacity-50"
                     aria-label={
                       showPassword
                         ? "Hide password"
@@ -267,8 +308,8 @@ function LoginPage({ onLogin, onGoToSignup }) {
 
                   {loading ? (
                     <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Logging in...
+                      <Loader2 className="h-5 w-5 animate-spin text-white" />
+                      <span>Authenticating...</span>
                     </>
                   ) : (
                     "Login"
@@ -292,8 +333,9 @@ function LoginPage({ onLogin, onGoToSignup }) {
 
               <button
                 type="button"
+                disabled={loading}
                 onClick={onGoToSignup}
-                className="font-medium text-blue-400 transition-colors hover:text-blue-300"
+                className="font-medium text-blue-400 transition-colors hover:text-blue-300 disabled:opacity-50"
               >
                 Create account
               </button>
