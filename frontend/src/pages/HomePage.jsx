@@ -230,7 +230,7 @@ export default function HomePage({ onAnalyzeComplete }) {
         resultData = activePresetRef.current.mockResult;
       } else {
         const formData = new FormData();
-        formData.append('audio_file', file);
+        formData.append('audio', file);
         formData.append('transaction_type', transactionType);
         formData.append('caller_id_match', callerIdMatch);
 

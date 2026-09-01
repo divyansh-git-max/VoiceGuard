@@ -1,5 +1,4 @@
 import asyncio
-import json
 import os
 import tempfile
 from pathlib import Path
@@ -22,43 +21,39 @@ async def analyze(temp_file_path: str, context: dict = None) -> dict:
             "caller_id_match": True,
         }
 
-    # Task 2: Parallelize CPU-heavy ML and DSP models simultaneously using threads
-    auth_score, dsp_flags = await asyncio.gather(
-        asyncio.to_thread(predict, temp_file_path),
-        asyncio.to_thread(extract_dsp_features, temp_file_path),
-    )
-
-    # Task 3: Evidence Packaging & LLM Judge
-    evidence = {
-        "authenticity_score": auth_score,
-        "dsp_output": dsp_flags,
-        "context": context,
-    }
-
     try:
-        verdict = await asyncio.to_thread(judge, evidence)
-    except Exception as e:
-        verdict = {"status": "placeholder", "error": str(e)}
+        # Task 2: Parallelize CPU-heavy ML and DSP models
+        auth_score, dsp_flags = await asyncio.gather(
+            asyncio.to_thread(predict, temp_file_path),
+            asyncio.to_thread(extract_dsp_features, temp_file_path),
+        )
 
-    # Output shape matching shared/schema_prototype.json
-    output = {
-        "model1_output": {
+        # Task 3: Evidence Packaging & LLM Judge
+        evidence = {
             "authenticity_score": auth_score,
-        },
-        "dsp_output": dsp_flags,
-    }
+            "dsp_output": dsp_flags,
+            "context": context,
+        }
 
-    return output
+        try:
+            verdict = await asyncio.to_thread(judge, evidence)
+        except Exception as e:
+            verdict = {"status": "placeholder", "error": str(e)}
 
+        output = {
+            "chunk_id": Path(temp_file_path).stem,
+            "model1_output": {
+                "authenticity_score": float(auth_score),
+            },
+            "dsp_output": dsp_flags,
+            "context": context,
+            "llm_judge_output": verdict,
+        }
 
-async def main():
-    result = await analyze(AUDIO_PATH)
-    print("Final Analysis Output (schema_prototype.json format):")
-    print(json.dumps(result, indent=4))
+        return output
 
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    except Exception as e:
+        raise e
 
 @router.post("/analyze")
 async def analyze_audio(
