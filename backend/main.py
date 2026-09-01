@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import init_db
 from backend.routes.auth import router as auth_router
-
+from backend.routes.analyze import router as analyze_router
 # Initialize database tables and seed single admin
 init_db()
 
@@ -25,6 +25,7 @@ app.add_middleware(
 
 # Register routers
 app.include_router(auth_router)
+app.include_router(analyze_router)
 
 
 @app.get("/")

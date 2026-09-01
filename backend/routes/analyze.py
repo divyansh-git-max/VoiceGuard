@@ -1,8 +1,14 @@
 import asyncio
 import json
+import os
+import tempfile
+from pathlib import Path
+from fastapi import APIRouter, UploadFile, File, Form 
 from ai_ml.classifier.predict import predict
 from ai_ml.dsp.dsp import extract_dsp_features
 from backend.llm_judge.judge import judge # not implemented as of now
+
+router = APIRouter(tags=["Analysis"])
 
 # Audio files for testing
 # AUDIO_PATH = r"E:\archive\LA\LA\ASVspoof2019_LA_eval\flac\LA_E_1001964.flac"
@@ -53,3 +59,41 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+@router.post("/analyze")
+async def analyze_audio(
+    audio: UploadFile = File(...),
+    transaction_type: str = Form("unknown"),
+    caller_id_match: bool = Form(True),
+):
+    temp_file_path = None
+
+    try:
+        suffix = Path(audio.filename).suffix or ".wav"
+
+        with tempfile.NamedTemporaryFile(
+            suffix=suffix,
+            delete=False,
+        ) as temp_file:
+
+            temp_file_path = temp_file.name
+
+            contents = await audio.read()
+            temp_file.write(contents)
+
+        context = {
+            "transaction_type": transaction_type,
+            "caller_id_match": caller_id_match,
+        }
+
+        result = await analyze(
+            temp_file_path,
+            context,
+        )
+
+        return result
+
+    finally:
+        if temp_file_path and os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+            
