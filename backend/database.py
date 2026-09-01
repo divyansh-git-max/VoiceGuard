@@ -15,6 +15,16 @@ if not DATABASE_URL:
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+if DATABASE_URL.startswith("postgresql://") and not DATABASE_URL.startswith("postgresql+"):
+    try:
+        import psycopg2
+    except ImportError:
+        try:
+            import psycopg
+            DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+        except ImportError:
+            pass
+
 # Connect args & engine configuration
 connect_args = {}
 engine_kwargs = {"pool_pre_ping": True}  # Crucial for Neon serverless pooler
