@@ -323,7 +323,7 @@ export default function HomePage({ onAnalyzeComplete }) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const res = await fetch('https://divyansh2025-voiceguard-api.hf.space/analyze', {
+      const res = await fetch('https://divyansh2025-voiceguard-api.hf.space/api/analyze', {
         headers,
         method: 'POST',
         body: formData
