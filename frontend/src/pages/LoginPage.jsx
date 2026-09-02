@@ -33,7 +33,7 @@ function LoginPage({ onLogin, onGoToSignup }) {
     setLoading(true);
 
     try {
-      const response = await fetch("https://divyansh2025-voiceguard-api.hf.space/gradio_api/auth/login", {
+      const response = await fetch("https://divyansh2025-voiceguard-api.hf.space/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -64,7 +64,7 @@ function LoginPage({ onLogin, onGoToSignup }) {
     } catch (err) {
       setError(
         err.message ||
-          "Unable to connect to authentication server. Please ensure the backend is running."
+        "Unable to connect to authentication server. Please ensure the backend is running."
       );
     } finally {
       setLoading(false);

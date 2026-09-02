@@ -55,7 +55,7 @@ function SignupPage({ onSignup, onGoToLogin }) {
     setLoading(true);
 
     try {
-      const response = await fetch("https://divyansh2025-voiceguard-api.hf.space/gradio_api/auth/register", {
+      const response = await fetch("https://divyansh2025-voiceguard-api.hf.space/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -91,7 +91,7 @@ function SignupPage({ onSignup, onGoToLogin }) {
     } catch (err) {
       setError(
         err.message ||
-          "Unable to connect to registration server. Please ensure the backend is running."
+        "Unable to connect to registration server. Please ensure the backend is running."
       );
     } finally {
       setLoading(false);
