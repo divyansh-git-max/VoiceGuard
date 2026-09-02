@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  UploadCloud, 
-  Mic, 
-  Square, 
-  FileAudio, 
-  AlertCircle, 
+import {
+  UploadCloud,
+  Mic,
+  Square,
+  FileAudio,
+  AlertCircle,
   ChevronDown,
   Sliders,
   ShieldAlert,
@@ -158,9 +158,9 @@ export default function HomePage({ onAnalyzeComplete }) {
       if (presetId === 'scam_deepfake') {
         // Robotic synthetic voice with fixed pitch & unnatural vocoder harmonics
         sample = 0.35 * Math.sin(2 * Math.PI * 220 * t) +
-                 0.25 * Math.sin(2 * Math.PI * 440 * t) +
-                 0.18 * Math.sin(2 * Math.PI * 660 * t) +
-                 0.12 * Math.sin(2 * Math.PI * 880 * t);
+          0.25 * Math.sin(2 * Math.PI * 440 * t) +
+          0.18 * Math.sin(2 * Math.PI * 660 * t) +
+          0.12 * Math.sin(2 * Math.PI * 880 * t);
       } else if (presetId === 'authentic_human') {
         // Natural human speech: dynamic pitch contour (130-180Hz) + natural cadence modulation
         const f0 = 155 + 28 * Math.sin(2 * Math.PI * 1.4 * t) + 12 * Math.cos(2 * Math.PI * 3.1 * t);
@@ -175,7 +175,7 @@ export default function HomePage({ onAnalyzeComplete }) {
         const phaseJitter = Math.sin(60 * t) > 0 ? 0.75 : -0.75;
         const f0 = 175 + 15 * Math.sin(2 * Math.PI * 0.6 * t);
         sample = 0.45 * Math.sin(2 * Math.PI * f0 * t + phaseJitter) +
-                 0.25 * Math.sin(2 * Math.PI * 2.5 * f0 * t);
+          0.25 * Math.sin(2 * Math.PI * 2.5 * f0 * t);
       }
 
       const clamped = Math.max(-1, Math.min(1, sample));
@@ -224,7 +224,7 @@ export default function HomePage({ onAnalyzeComplete }) {
     activePresetRef.current = preset;
     setTransactionType(preset.type);
     setCallerIdMatch(preset.callerMatch);
-    
+
     const generatedFile = createSynthesizedWav(preset.id, preset.sampleName);
     setFile(generatedFile);
     const url = URL.createObjectURL(generatedFile);
@@ -239,9 +239,9 @@ export default function HomePage({ onAnalyzeComplete }) {
       const options = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? { mimeType: 'audio/webm;codecs=opus' }
         : MediaRecorder.isTypeSupported('audio/ogg')
-        ? { mimeType: 'audio/ogg' }
-        : {};
-      
+          ? { mimeType: 'audio/ogg' }
+          : {};
+
       mediaRecorderRef.current = new MediaRecorder(stream, options);
       audioChunksRef.current = [];
 
@@ -323,10 +323,10 @@ export default function HomePage({ onAnalyzeComplete }) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const res = await fetch('/analyze', {
+      const res = await fetch('https://divyansh2025-voiceguard-api.hf.space/analyze', {
+        headers,
         method: 'POST',
-        body: formData,
-        headers
+        body: formData
       });
 
       if (!res.ok) {
@@ -346,7 +346,7 @@ export default function HomePage({ onAnalyzeComplete }) {
 
       clearInterval(stepInterval);
       setAnalysisStep(4);
-      
+
       setTimeout(() => {
         setIsAnalyzing(false);
         if (onAnalyzeComplete) {
@@ -368,7 +368,7 @@ export default function HomePage({ onAnalyzeComplete }) {
 
   return (
     <div style={{ maxWidth: '1160px', margin: '0 auto', padding: '2.5rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-      
+
       {/* Hero Header matching VoiceGuard Style */}
       <div style={{
         display: 'grid',
@@ -454,7 +454,7 @@ export default function HomePage({ onAnalyzeComplete }) {
 
       {/* Main Ingestion & Capture Section */}
       <div className="vg-card" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-        
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <Sliders size={18} color="#60a5fa" />
@@ -473,7 +473,7 @@ export default function HomePage({ onAnalyzeComplete }) {
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: '1.25rem'
         }}>
-          
+
           {/* Ingestion Dropzone */}
           <div
             onDragOver={handleDragOver}
@@ -822,7 +822,7 @@ export default function HomePage({ onAnalyzeComplete }) {
         }}>
           <div className="vg-card" style={{ maxWidth: '500px', width: '100%', padding: '2.25rem', background: 'rgba(15, 23, 42, 0.85)', border: '1px solid rgba(59, 130, 246, 0.5)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              
+
               <div>
                 <span style={{ fontSize: '0.8rem', color: '#60a5fa', fontWeight: 600 }}>
                   Active Examination

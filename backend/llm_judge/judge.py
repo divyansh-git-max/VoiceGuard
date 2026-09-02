@@ -149,28 +149,8 @@ def _llm_verdict(evidence: dict) -> dict:
 def judge(evidence: dict) -> dict:
     """
     Main entry point called by routes/analyze.py.
-
-    Args:
-        evidence: {
-            "authenticity_score": float,   # from classifier
-            "dsp_output": dict,            # from dsp module
-            "context": dict                # transaction_type, caller_id_match
-        }
-
-    Returns:
-        { "final_risk_score": int, "risk_level": str, "explanation": str }
-        Always returns a valid dict — falls back to rule-based if no API key.
     """
-    has_llm_key = bool(os.getenv("OPENAI_API_KEY") or os.getenv("GROQ_API_KEY"))
-
-    if not has_llm_key:
-        log.warning("No LLM API key found. Using rule-based fallback verdict.")
-        return _rule_based_verdict(evidence)
-
-    try:
-        return _llm_verdict(evidence)
-    except Exception as e:
-        # If the LLM call fails for any reason (rate limit, network, bad JSON),
-        # fall back gracefully rather than crashing the whole request.
-        log.error(f"LLM judge failed ({e}). Falling back to rule-based verdict.")
-        return _rule_based_verdict(evidence)
+    # [MODIFIED]: The GROQ/LLM feature is currently skipped.
+    # We force the deterministic rule-based fallback directly.
+    log.info("Bypassing LLM API. Forcing rule-based fallback verdict.")
+    return _rule_based_verdict(evidence)

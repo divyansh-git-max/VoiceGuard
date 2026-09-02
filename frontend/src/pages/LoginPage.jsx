@@ -33,7 +33,7 @@ function LoginPage({ onLogin, onGoToSignup }) {
     setLoading(true);
 
     try {
-      const response = await fetch("/auth/login", {
+      const response = await fetch("https://divyansh2025-voiceguard-api.hf.space/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

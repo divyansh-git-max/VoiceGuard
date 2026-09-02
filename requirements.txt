@@ -16,3 +16,10 @@ scikit-learn            # LogisticRegression + StandardScaler
 silero-vad              # Voice Activity Detection
 praat-parselmouth       # pitch/F0 extraction (Parselmouth wraps Praat)
 numpy
+
+sqlalchemy
+PyJWT
+psycopg2-binary
+
+
+xgboost
