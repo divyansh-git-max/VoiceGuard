@@ -1,188 +1,105 @@
-# VoiceGuard 🎙️🛡️
-> SIH 2026 | Problem ID: SIH26104 | AI-powered voice-clone detection and real-time fraud prevention
+# 🛡️ VoiceGuard
+
+VoiceGuard is a real-time forensic AI system designed to detect synthetic, cloned, and spoofed voices. Built to combat AI-driven audio fraud, VoiceGuard analyzes live microphone recordings or uploaded audio files using a combination of Deep Learning embeddings, Digital Signal Processing (DSP) heuristics, and an LLM-driven judge to provide a definitive risk verdict.
+
+## 🏗️ System Architecture
+
+VoiceGuard is split into a decoupled frontend and backend, optimized for free-tier cloud deployment while still harnessing powerful GPU acceleration.
+
+*   **Frontend (Vercel):** A React-based web application that handles user authentication and captures live microphone audio (in `.webm` format) or file uploads, passing them directly to the backend.
+*   **Backend (Hugging Face Spaces - ZeroGPU):** A hybrid FastAPI + Gradio server. It acts as a headless REST API while utilizing Hugging Face's ZeroGPU infrastructure to dynamically allocate GPU resources for PyTorch model inference.
+
+### 🧠 The Inference Pipeline
+1.  **Format Normalization:** Uploaded `.webm` or `.mp3` files are dynamically converted to standard `.wav` using `pydub` and `ffmpeg`.
+2.  **DSP Analysis:** `librosa` extracts acoustic features (pitch anomalies, spectral centroid, timing patterns).
+3.  **Deep Learning Classifier (GPU):** A fine-tuned `ai4bharat/indicwav2vec-hindi` transformer model extracts embeddings and predicts synthetic probability.
+4.  **LLM Judge:** A language model evaluates the DSP flags, the ML authenticity score, and the transaction context to output a final JSON verdict and explanation.
 
 ---
 
-## 📁 Repo Structure
+## 🚀 Key Technical Solutions (ZeroGPU Bridge)
 
-```
-VoiceGuard/
-├── shared/
-│   └── schema.json              ← JSON contract all components must follow
-│
-├── ai_ml/
-│   ├── classifier/
-│   │   ├── models/
-│   │   │   └── model.pkl        ← Pre-trained classifier artifact (wav2vec2 + LogReg/SVM)
-│   │   ├── train.py             ← Model training script on ASVspoof dataset
-│   │   ├── predict.py           ← Inference engine (CLI & Python API)
-│   │   └── evaluate_eval.py     ← Model evaluation & test metrics script
-│   └── dsp/
-│       └── dsp.py               ← extract_dsp_features(audio_path) → DSP anomaly metrics
-│
-├── backend/
-│   ├── main.py                  ← FastAPI server, CORS middleware, entrypoint
-│   ├── database.py              ← PostgreSQL / Neon DB connection & admin seeder
-│   ├── models.py                ← SQLAlchemy database models (User, Role)
-│   ├── auth.py                  ← Password hashing, JWT token handling
-│   ├── schemas.py               ← Pydantic request/response schemas
-│   ├── routes/
-│   │   ├── auth.py              ← POST /auth/login, POST /auth/register
-│   │   └── analyze.py           ← POST /analyze pipeline endpoint
-│   └── llm_judge/
-│       └── judge.py             ← LLM forensic judge (risk score & explanation)
-│
-├── frontend/
-│   ├── package.json             ← React 18, Vite, Tailwind CSS v4, Framer Motion
-│   ├── vite.config.js           ← Vite config with backend proxy (/analyze, /auth)
-│   └── src/
-│       ├── App.jsx              ← React Router & authentication route guards
-│       ├── index.css            ← VoiceGuard Design System & theme styling
-│       ├── pages/
-│       │   ├── LoginPage.jsx    ← Split-screen login page with Neon DB auth
-│       │   ├── SignupPage.jsx   ← User registration page
-│       │   ├── HomePage.jsx     ← Audio upload, live recording, & test presets
-│       │   └── ResultPage.jsx   ← Risk score gauge, DSP breakdown & telemetry
-│       └── components/
-│           ├── Navbar.jsx       ← Top navigation with user status & logout
-│           ├── RiskGauge.jsx    ← Visual animated risk gauge
-│           ├── DspFlags.jsx     ← Forensic DSP anomaly indicator grid
-│           └── AudioPlayer.jsx  ← Custom waveform audio player
-│
-├── data/LA/                     ← ASVspoof 2019 LA dataset (gitignored)
-├── .env.example                 ← Environment variable template
-└── requirements.txt             ← Python dependencies
-```
+Hugging Face's ZeroGPU normally requires all GPU workloads to be triggered by a Gradio UI event, which breaks standard FastAPI endpoints. VoiceGuard solves this using an **Internal ZeroGPU Bridge**:
+*   The FastAPI app runs concurrently with a hidden Gradio UI.
+*   When a POST request hits the FastAPI `/analyze` endpoint, it uses `gradio_client` to silently trigger a hidden Gradio API on `localhost`.
+*   This perfectly routes the PyTorch inference through Gradio's strict event queue, allocating the GPU seamlessly.
 
 ---
 
-## ⚙️ Environment Setup
+## 🛠️ Setup & Deployment
 
-### 1. Configure Environment Variables
-Copy `.env.example` to `.env` in the root directory:
+### 1. Prerequisites
+*   Python 3.10+
+*   `ffmpeg` installed on your system (Required for `.webm` microphone decoding).
+
+### 2. Environment Variables
+If hosting on Hugging Face Spaces, you must add the following **Secrets**:
+*   `HF_TOKEN`: Your Hugging Face Read token. **Required** to download the gated `ai4bharat/indicwav2vec-hindi` model.
+*   `DATABASE_URL` *(Optional)*: A PostgreSQL connection string (e.g., Neon or Supabase) for persistent user accounts. If omitted, VoiceGuard falls back to a temporary local SQLite database (`voiceguard.db`).
+
+### 3. Hugging Face Spaces Configuration
+To deploy on Hugging Face, ensure the root of your repository contains:
+*   `packages.txt`: Must contain `ffmpeg` (installs the system-level media decoder).
+*   `requirements.txt`: Must contain `fastapi`, `uvicorn`, `gradio`, `pydub`, `librosa`, `torch`, `transformers`, `soundfile`, `sqlalchemy`.
+
+### 4. Running Locally
 ```bash
-cp .env.example .env
+# Clone the repository
+git clone https://github.com/yourusername/VoiceGuard.git
+cd VoiceGuard
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the hybrid server
+python app.py
 ```
-Fill in the required values:
-- `DATABASE_URL`: Your Neon PostgreSQL connection string (or leave empty for local SQLite fallback).
-- `SECRET_KEY`: Secret key for signing session tokens.
-- `OPENAI_API_KEY` or `GEMINI_API_KEY`: API key for the LLM forensic threat judge.
+*Note: The server will start on `http://127.0.0.1:7860`.*
 
 ---
 
-## 🚀 Running the Project
+## 🔌 API Reference
 
-### 1. Backend Server (FastAPI)
+*(Note: When deployed on Hugging Face Spaces, all endpoints must be prefixed with `/gradio_api` to pass through the Node.js reverse proxy.)*
 
-```bash
-# Install Python dependencies
-uv sync
+### `POST /gradio_api/auth/register`
+Creates a new user account.
+*   **Body:** `{"username": "testuser", "email": "test@test.com", "password": "password"}`
 
-# Start the FastAPI server on port 8000
-uv run start-backend
-# Alternatively:
-# uv run uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
-```
+### `POST /gradio_api/auth/login`
+Authenticates a user.
+*   **Body:** `{"username_or_email": "testuser", "password": "password"}`
 
-- **Interactive API Docs (Swagger UI)**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
-
-### 2. Frontend Application (React + Vite)
-
-```bash
-# Navigate to frontend directory
-cd frontend
-
-# Install Node dependencies
-npm install
-
-# Start Vite development server
-npm run dev
-```
-
-- **Web Application URL**: [http://localhost:5173](http://localhost:5173)
-
-#### Default Admin Credentials:
-* **Username / Email**: `admin` or `admin@voiceguard.com`
-* **Password**: `AdminSecret123!`
-* *Or click **Create account** to register a new user in the database.*
-
----
-
-## 🧠 Synthetic Voice Classifier (`ai_ml/classifier/`)
-
-### Overview
-The AI classifier is VoiceGuard's core neural detection engine. Given an audio recording (`.wav`, `.mp3`, `.flac`, `.m4a`), it predicts whether the voice is **SYNTHETIC** (AI voice clone, TTS, or voice conversion attack) or **BONAFIDE** (authentic human speaker) by returning a probability score between `0.0` and `1.0`.
-
-### Architecture & How It Works
-* **Pre-trained Backbone**: `ai4bharat/indicwav2vec-hindi` — a 300M-parameter Wav2Vec2-Large model pre-trained on diverse Indian languages and dialects to prevent false positives on regional accents.
-* **Feature Representation**: Extracts 1024-dim frame embeddings and applies **Temporal Statistical Pooling** (Mean + Standard Deviation $\rightarrow$ 2048-dim feature vector) to capture subtle vocoder glitches and acoustic variance anomalies.
-* **Classification Head**: Trained on **27,880 audio clips** (ASVspoof 2019 Logical Access dataset mixed with 2,500 native Mozilla Common Voice Hindi human recordings).
-* **Validated Performance**:
-  * **ROC-AUC Score**: `0.9974` (99.74% separation)
-  * **Equal Error Rate (EER)**: `2.66%`
-  * **Accuracy**: `97.34%`
+### `POST /gradio_api/analyze`
+The primary forensic analysis endpoint.
+*   **Content-Type:** `multipart/form-data`
+*   **Fields:**
+    *   `audio` or `audio_file`: The audio file blob (`.webm`, `.wav`, etc.)
+    *   `transaction_type` (string): Context (e.g., "unknown")
+    *   `caller_id_match` (boolean): Context flag
+*   **Response:**
+    ```json
+    {
+      "chunk_id": "vg-chunk-a1b2c3d4",
+      "model1_output": {
+        "authenticity_score": 0.985
+      },
+      "dsp_output": ["high_pitch_variance"],
+      "context": {"transaction_type": "unknown", "caller_id_match": true},
+      "llm_judge_output": {
+        "final_risk_score": 98,
+        "risk_level": "high",
+        "explanation": "High synthetic probability detected alongside abnormal pitch variance."
+      }
+    }
+    ```
 
 ---
 
-### How to Test Any Audio Sample
-
-#### 1. Via Command Line (CLI)
-Test any audio file directly from the project root:
-
-```bash
-uv run python ai_ml/classifier/predict.py "path/to/your_audio.wav"
-```
-
-**Example Output:**
-```text
-=======================================================
-🎙️🛡️ VOICEGUARD AUDIO ANALYSIS VERDICT
-=======================================================
-  • File:               path/to/your_audio.wav
-  • Verdict:            SYNTHETIC
-  • Synthetic Prob:     99.97% (score: 0.9997)
-  • Decision Threshold: 0.9644
-  • Model Confidence:   100.0%
-  • Backbone:           ai4bharat/indicwav2vec-hindi
-=======================================================
-```
-
-*(Tip: Append `--json` to output results as raw JSON).*
-
----
-
-#### 2. In Python Code (Backend Integration)
-Import `predict` into any route or Python script:
-
-```python
-from ai_ml.classifier.predict import predict, predict_detailed
-
-# 1. Quick probability score (0.0 = Real Human, 1.0 = AI Cloned)
-# Satisfies shared/schema.json "authenticity_score"
-prob = predict("path/to/audio.wav")
-print(f"Synthetic Probability: {prob:.4f}")
-
-# 2. Full structured metadata
-details = predict_detailed("path/to/audio.wav")
-print(details)
-# {
-#   "authenticity_score": 0.9997,
-#   "is_synthetic": True,
-#   "label": "SYNTHETIC",
-#   "confidence": 1.0,
-#   "threshold": 0.9644,
-#   "backbone": "ai4bharat/indicwav2vec-hindi",
-#   "device": "cuda"
-# }
-```
-
----
-
-#### 3. Run Benchmark Suite on Unseen Audio
-To batch-test random unseen clips from the official ASVspoof 2019 Eval dataset and unseen Hindi recordings:
-
-```bash
-# may take some time on first run
-uv run python ai_ml/classifier/evaluate_eval.py --samples 500
-```
+## 📁 Repository Structure
+*   `/app.py` - Main entrypoint, ZeroGPU setup, and API router mounting.
+*   `/backend/routes/` - FastAPI endpoints (`auth.py`, `analyze.py`).
+*   `/backend/database.py` - SQLAlchemy models and DB initialization.
+*   `/ai_ml/classifier/` - PyTorch `indicwav2vec` inference logic.
+*   `/ai_ml/dsp/` - Audio signal processing heuristics.
+*   `/frontend/` - React/Vercel UI codebase.
